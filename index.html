@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pahalı mı? Ucuz mu?</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+
+    header { width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .logo { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+    .score-box { background: var(--card); padding: 8px 16px; border-radius: 10px; border: 1px solid #334155; font-weight: 600; }
+    .score-box span { color: var(--accent); }
+
+    main { width: 100%; max-width: 800px; display: flex; gap: 20px; align-items: center; justify-content: center; position: relative; }
+    @media (max-width: 650px) { main { flex-direction: column; } }
+
+    .card { flex: 1; width: 100%; background: var(--card); border-radius: 16px; border: 1px solid #334155; padding: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; min-height: 380px; }
+    .card img { width: 100%; height: 200px; object-fit: contain; border-radius: 10px; margin-bottom: 15px; background: #fff; padding: 10px; }
+    .card h3 { font-size: 1.1rem; margin-bottom: 15px; min-height: 50px; display: flex; align-items: center; }
+    .price { font-size: 1.8rem; font-weight: 800; color: #e2e8f0; margin-top: auto; }
+
+    .vs { position: absolute; background: #f59e0b; color: #fff; font-weight: 900; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid var(--bg); z-index: 5; }
+
+    .btn-group { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 15px; }
+    .btn { padding: 12px; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: 0.2s; color: white; }
+    .btn-higher { background: var(--success); }
+    .btn-higher:hover { background: #16a34a; }
+    .btn-lower { background: var(--danger); }
+    .btn-lower:hover { background: #dc2626; }
+
+    #loading { font-size: 1.2rem; color: var(--muted); margin-top: 50px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Pahalı mı? Ucuz mu?</div>
+    <div class="score-box">Seri: <span id="score">0</span> | Rekor: <span id="highScore">0</span></div>
+  </header>
+
+  <div id="loading">Güncel Ürün Fiyatları Yükleniyor...</div>
+
+  <main id="game" style="display: none;">
+    <!-- Sol Kart -->
+    <div class="card">
+      <img id="imgA" src="" alt="Ürün A">
+      <h3 id="titleA"></h3>
+      <div class="price" id="priceA">0 ₺</div>
+    </div>
+
+    <div class="vs">VS</div>
+
+    <!-- Sağ Kart -->
+    <div class="card">
+      <img id="imgB" src="" alt="Ürün B">
+      <h3 id="titleB"></h3>
+      <div class="price" id="priceB">? ₺</div>
+
+      <div class="btn-group" id="controls">
+        <button class="btn btn-higher" onclick="guess('higher')">⬆ DAHA PAHALI</button>
+        <button class="btn btn-lower" onclick="guess('lower')">⬇ DAHA UCUZ</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let products = [], score = 0, highScore = localStorage.getItem('hg_score') || 0;
+    let itemA, itemB;
+
+    document.getElementById('highScore').innerText = highScore;
+
+    async function loadProducts() {
+      try {
+        const res = await fetch('products.json');
+        products = await res.json();
+        if(!products || products.length < 2) {
+          document.getElementById('loading').innerText = "Henüz ürün verisi yok. Botun çalışması bekleniyor...";
+          return;
+        }
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('game').style.display = 'flex';
+        initGame();
+      } catch(e) {
+        document.getElementById('loading').innerText = "Veri yüklenemedi. Lütfen sayfayı yenileyin.";
+      }
+    }
+
+    function getRandomProduct(excludeName = null) {
+      let selected;
+      do {
+        selected = products[Math.floor(Math.random() * products.length)];
+      } while(excludeName && selected.name === excludeName && products.length > 1);
+      return selected;
+    }
+
+    function initGame() {
+      itemA = itemA || getRandomProduct();
+      itemB = getRandomProduct(itemA.name);
+
+      document.getElementById('titleA').innerText = itemA.name;
+      document.getElementById('imgA').src = itemA.img;
+      document.getElementById('priceA').innerText = itemA.price.toLocaleString('tr-TR') + ' ₺';
+
+      document.getElementById('titleB').innerText = itemB.name;
+      document.getElementById('imgB').src = itemB.img;
+      document.getElementById('priceB').innerText = '? ₺';
+      document.getElementById('controls').style.display = 'flex';
+    }
+
+    function guess(choice) {
+      document.getElementById('controls').style.display = 'none';
+      document.getElementById('priceB').innerText = itemB.price.toLocaleString('tr-TR') + ' ₺';
+
+      const isHigher = itemB.price >= itemA.price;
+      const win = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
+
+      if(win) {
+        score++;
+        document.getElementById('score').innerText = score;
+        if(score > highScore) {
+          highScore = score;
+          localStorage.setItem('hg_score', highScore);
+          document.getElementById('highScore').innerText = highScore;
+        }
+        setTimeout(() => {
+          itemA = itemB;
+          initGame();
+        }, 1200);
+      } else {
+        setTimeout(() => {
+          alert(`Yanlış Tahmin!\nYaptığın Seri: ${score}`);
+          score = 0;
+          document.getElementById('score').innerText = score;
+          itemA = null;
+          initGame();
+        }, 1000);
+      }
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>
