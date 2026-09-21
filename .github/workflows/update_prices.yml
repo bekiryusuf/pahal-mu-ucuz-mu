@@ -1,0 +1,32 @@
+name: Otomatik Fiyat Güncelleyici
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Her gece çalışır
+  workflow_dispatch:      # Manuel çalıştırma butonu
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repoyu Klonla
+        uses: actions/checkout@v3
+
+      - name: Python Kur
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Kütüphaneleri Yükle
+        run: pip install requests beautifulsoup4
+
+      - name: Scraper Botunu Çalıştır
+        run: python scraper.py
+
+      - name: Verileri Kaydet ve Push Et
+        run: |
+          git config --global user.name 'PriceBot'
+          git config --global user.email 'bot@github.com'
+          git add products.json
+          git commit -m "Auto-update prices [skip ci]" || exit 0
+          git push
